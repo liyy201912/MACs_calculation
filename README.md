@@ -1,4 +1,4 @@
-# MACs_calculation for neural network
+# MACs_calculation for neural network, PyTorch
 
 See
 ```
