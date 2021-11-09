@@ -9,13 +9,17 @@ class ProfileConv(nn.Module):
         self.model = model
         self.hooks = []
         self.macs = []
+        self.params = []
 
         def hook_conv(module, input, output):
             self.macs.append(output.size(1) * output.size(2) * output.size(3) *
                              module.weight.size(-1) * module.weight.size(-1) * input[0].size(1) / module.groups)
+            self.params.append(module.weight.size(0) * module.weight.size(1) *
+                               module.weight.size(2) * module.weight.size(3))
 
         def hook_linear(module, input, output):
             self.macs.append(module.weight.size(0) * module.weight.size(1))
+            self.params.append(module.weight.size(0) * module.weight.size(1))
 
         for name, module in self.model.named_modules():
             if isinstance(module, nn.Conv2d):
@@ -28,7 +32,7 @@ class ProfileConv(nn.Module):
         _ = self.model(x)
         for handle in self.hooks:
             handle.remove()
-        return self.macs
+        return self.macs, self.params
 
 
 if __name__ == '__main__':
@@ -40,7 +44,8 @@ if __name__ == '__main__':
     model = torchvision.models.mobilenet_v2(pretrained=False)
 
     profile = ProfileConv(model)
-    MACs = profile(x)
+    MACs, params = profile(x)
 
     print('number of conv&fc layers:', len(MACs))
-    print(sum(MACs) / 1e9, 'GMACs, only consider conv layers')
+    print(sum(MACs) / 1e9, 'GMACs')
+    print(sum(params) / 1e6, 'M parameters')
