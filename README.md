@@ -1,4 +1,4 @@
-# MACs_calculation
+# MACs_calculation for neural network
 
 See
 ```
