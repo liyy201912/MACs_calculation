@@ -18,14 +18,42 @@ class ProfileConv(nn.Module):
                                module.weight.size(2) * module.weight.size(3))
 
         def hook_linear(module, input, output):
-            self.macs.append(module.weight.size(0) * module.weight.size(1))
+            if len(input[0].size()) > 2:
+                self.macs.append(module.weight.size(0) * module.weight.size(1) * input[0].size(-2))
+            else:
+                self.macs.append(module.weight.size(0) * module.weight.size(1))
             self.params.append(module.weight.size(0) * module.weight.size(1))
+
+        def hook_gelu(module, input, output):
+            if len(output[0].size()) > 3:
+                self.macs.append(output.size(1) * output.size(2) * output.size(3))
+            else:
+                self.macs.append(output.size(1) * output.size(2))
+
+        def hook_layernorm(module, input, output):
+            self.macs.append(2 * input[0].size(1) * input[0].size(2))
+            self.params.append(module.weight.size(0) + module.bias.size(0))
+
+        def hook_avgpool(module, input, output):
+            self.macs.append(output.size(1) * output.size(2) * output.size(3) * module.kernel_size * module.kernel_size)
+
+        def hook_attention(module, input, output):
+            self.macs.append(module.key_dim * (module.resolution ** 4) * module.num_heads +
+                             module.dh * (module.resolution ** 4))
 
         for name, module in self.model.named_modules():
             if isinstance(module, nn.Conv2d):
                 self.hooks.append(module.register_forward_hook(hook_conv))
             elif isinstance(module, nn.Linear):
                 self.hooks.append(module.register_forward_hook(hook_linear))
+            elif isinstance(module, nn.GELU):
+                self.hooks.append(module.register_forward_hook(hook_gelu))
+            elif isinstance(module, nn.LayerNorm):
+                self.hooks.append(module.register_forward_hook(hook_layernorm))
+            elif isinstance(module, nn.AvgPool2d):
+                self.hooks.append(module.register_forward_hook(hook_avgpool))
+#             elif isinstance(module, Attention):
+#                 self.hooks.append(module.register_forward_hook(hook_attention))
 
     def forward(self, x):
         self.model.to(x.device)
