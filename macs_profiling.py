@@ -15,14 +15,14 @@ class ProfileConv(nn.Module):
             self.macs.append(output.size(1) * output.size(2) * output.size(3) *
                              module.weight.size(-1) * module.weight.size(-1) * input[0].size(1) / module.groups)
             self.params.append(module.weight.size(0) * module.weight.size(1) *
-                               module.weight.size(2) * module.weight.size(3))
+                               module.weight.size(2) * module.weight.size(3) + module.weight.size(1))
 
         def hook_linear(module, input, output):
             if len(input[0].size()) > 2:
                 self.macs.append(module.weight.size(0) * module.weight.size(1) * input[0].size(-2))
             else:
                 self.macs.append(module.weight.size(0) * module.weight.size(1))
-            self.params.append(module.weight.size(0) * module.weight.size(1))
+            self.params.append(module.weight.size(0) * module.weight.size(1) + module.bias.size(0))
 
         def hook_gelu(module, input, output):
             if len(output[0].size()) > 3:
